@@ -89,7 +89,21 @@ kubectl port-forward services/phpmyadmin 8080:80
 
 ### STEP 8: Create Helm Chart for Java App
 
-All config files: service, deployment, ingress, configMap, secret, will be part of the chart
-Create custom values file as an example for developers to use when deploying the application
-Deploy the java application using the chart with helmfile
-Host the chart in its own git repository
+```
+helm install mysql bitnami/mysql -f mysql-helm/values.yaml
+```
+```
+helm install ingress-nginx ingress-nginx/ingress-nginx 
+```
+```
+helm install java-app java-app-helm
+```
+```
+minikube ip
+```
+```/etc/hosts
+<ip> my-java-app.com
+```
+```
+curl http://my-java-app.com
+```

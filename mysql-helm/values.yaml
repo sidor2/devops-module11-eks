@@ -1,9 +1,9 @@
 ## MySQL image version
 auth:
-  rootPassword: xxxxx
-  database: xxxxx
-  username: xxxxx
-  password: xxxxx
+  rootPassword: my-password
+  database: my_database
+  username: my-user
+  password: my-pass
 
 secondary:
   replicaCount: 2
