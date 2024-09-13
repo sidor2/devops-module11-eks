@@ -1,5 +1,4 @@
-# devops-module10-k8s
-Container Orchestration with Kubernetes
+# Container Orchestration with Kubernetes
 
 ## problem description
 Your company’s java-mysql application is running with docker-compose on a server. This application is used often internally and by your company clients too. You noticed that the server isn't very stable: Often a database container dies or the application itself, or docker daemon must be restarted. During this time people can't access the app!
