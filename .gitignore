@@ -1,2 +1,4 @@
 mysql.txt
 java-app/secret.yaml
+cluster-autoscaler-autodiscover.yaml
+test-as.yaml

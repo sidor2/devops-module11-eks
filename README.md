@@ -1,24 +1,38 @@
-# Container Orchestration with Kubernetes
+# Kubernetes on AWS - EKS
 
 ## problem description
-Your company’s java-mysql application is running with docker-compose on a server. This application is used often internally and by your company clients too. You noticed that the server isn't very stable: Often a database container dies or the application itself, or docker daemon must be restarted. During this time people can't access the app!
+Right after you setup the cluster on LKE or Minikube and deployed your application inside, your manager comes to you to tell you that the company also wants to run Kubernetes on AWS. Again, with less overhead when managing just one platform. So they ask you to reconfigure your cluster on AWS and deploy your application there instead.
 
-So when this happens, the users write to you to tell you that the app is down and ask you to fix it. You SSH into the server, restart the containers with docker-compose and containers start again.
+See: https://github.com/sidor2/devops-module10-k8s.git
 
-But this is annoying work, plus it doesn't look good for your company that your clients often can't access the app. So you want to make your application more reliable and highly available. You want to replicate both the database and the app, so if one container goes down, there is always a backup. Also you don't want to rely on a single server, but have multiple, in case 1 whole server goes down or gets rebooted etc.
+## proposed solution
 
-So you look into different solutions and decide to use the container orchestration tool Kubernetes to solve the issue. For now you want to configure it and deploy your application manually, since it's a new tool and want to try it out manually before automating.
+### STEP 1: Create EKS cluster
+- With eksctl you create an EKS cluster with 3 Nodes and 1 Fargate profile
 
-## propose solution
-
-### STEP 1: Create a Kubernetes cluster
 ```
-minikube start --driver=docker
+eksctl create cluster \
+  --name m11-cluster \
+  --region us-west-2 \
+  --nodegroup-name m11-nodegroup \
+  --nodes 3 \
+  --nodes-min 3 \
+  --nodes-max 3 \
+  --node-type t3.medium \
+  --managed
 ```
 
+```
+eksctl create fargateprofile \
+  --cluster m11-cluster \
+  --name m11-fargate-profile \
+  --namespace fargate-namespace
+```
 
 
 ### STEP 2: Deploy Mysql with 2 replicas using Helm
+- You deploy mysql and phpmyadmin on the EC2 nodes using the same setup as before.
+
 - https://github.com/bitnami/charts/tree/main/bitnami%2Fmysql
 
 ```
@@ -26,83 +40,57 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```
 ```
-helm install mysql bitnami/mysql --set replicaCount=2 --set persistence.enabled=false
-```
-```
 helm install mysql bitnami/mysql -f mysql-helm/values.yaml
 ```
 
-
-### STEP 3: Deploy your Java Application with 2 replicas
-
-```
-kubectl apply -f java-app/secret.yaml
-kubectl apply -f java-app/configmap.yaml
-kubectl apply -f java-app/deployment.yaml
-```
-
-
-### STEP 4: Deploy phpmyadmin
+### STEP 3: Deploy phpmyadmin
 
 ```
 kubectl apply -f phpmyadmin/phpmyadmin.yaml
 ```
 
-### STEP 5: Deploy Ingress Controller
-```
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
-```
-```
-helm install ingress-nginx ingress-nginx/ingress-nginx 
-```
 
-### STEP 6: Create Ingress rule
+### STEP 4: Deploy your Java Application with 2 replicas
 
-> make sure the name of the service matches in the ingress.yaml and in the deployment.yaml
-```
-kubectl apply -f java-app/ingress.yaml
-```
-```
-minikube addons enable ingress
-```
-```
-minikube ip
-```
-```/etc/hosts
-<ip> my-java-app.com
-```
-```
-curl http://my-java-app.com
-```
-
-### STEP 7: Port-forward for phpmyadmin
-1. Temporary port-forward
-```
-kubectl port-forward services/phpmyadmin 8080:80
-```
-
-2. Permanent - updated the phpmyadmin service to LoadBalancer type and redeployed.
-
-3. Run a DaemonSet for Port Forwarding (not implemented yet)
-
-### STEP 8: Create Helm Chart for Java App
+- You deploy your Java application using Fargate with 3 replicas using the same setup as before.
 
 ```
-helm install mysql bitnami/mysql -f mysql-helm/values.yaml
+kubectl apply -f java-app/secret.yaml
+kubectl apply -f java-app/configmap.yaml
+kubectl apply -f java-app/deployment.yaml
+kubectl apply -f java-app/service.yaml
 ```
+
+### STEP 5: Configure Autoscaling
+
+- attach ClusterAutoScaler policy to the IAM role that your worker nodes use
+
 ```
-helm install ingress-nginx ingress-nginx/ingress-nginx 
+aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[*].{Name:AutoScalingGroupName}' --output table
 ```
+
 ```
-helm install java-app java-app-helm
+aws autoscaling create-or-update-tags --tags \
+  Key=k8s.io/cluster-autoscaler/enabled,Value=true,PropagateAtLaunch=true,ResourceType=auto-scaling-group,ResourceId=eks-m11-nodegroup-b2c90af1-aad7-b258-5c5b-9f11570eeb38 \
+  Key=k8s.io/cluster-autoscaler/m11-cluster,Value=true,PropagateAtLaunch=true,ResourceType=auto-scaling-group,ResourceId=eks-m11-nodegroup-b2c90af1-aad7-b258-5c5b-9f11570eeb38
 ```
+
 ```
-minikube ip
+wget https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
 ```
-```/etc/hosts
-<ip> my-java-app.com
+
 ```
+kubectl apply -f cluster-autoscaler-autodiscover.yaml
 ```
-curl http://my-java-app.com
+
+```
+kubectl annotate deployment cluster-autoscaler \
+    -n kube-system \
+    cluster-autoscaler.kubernetes.io/safe-to-evict="false"
+```
+- edit the deployment container commands
+```
+        - --balance-similar-node-groups
+        - --skip-nodes-with-system-pods=false
+        image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.30.0
 ```
