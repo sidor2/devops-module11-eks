@@ -1,17 +1,17 @@
 appName: java-app
-imageName: ilsoldier/k8s-java-app
-imageTag: "1.0"
-servicePort: 8080
+imageName: "ilsoldier/eks-demo-app"
+imageTag: "1.1.1-14"
+# servicePort: 80
 envData: {}
 
 serviceName: java-app-service
 serviceData:
-  servicePort: 8080  
+  servicePort: 80  
   containerPort: 8080
 
 configName: java-app-config
 configData:
-  DB_SERVER: mysql
+  DB_SERVER: mysql.default
 
 secretName: java-app-secret
 secretData:
@@ -20,8 +20,8 @@ secretData:
   DB_NAME: my_database
   mysqlRootPassword: my-password
 
-ingressName: java-app-ingress
-ingressData:
-  host: my-java-app.com # has to be the domain that is defined in the java-app source code
-  path: /
-  pathType: Prefix
+# ingressName: java-app-ingress
+# ingressData:
+#   host: my-java-app.com # has to be the domain that is defined in the java-app source code
+#   path: /
+#   pathType: Prefix

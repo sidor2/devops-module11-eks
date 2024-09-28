@@ -7,8 +7,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - port: 80  # Port to expose the service
+    - protocol: TCP
+      port: 80  # Port to expose the service
       targetPort: 8080  # Port on which your app is running in the container (change it if needed)
-      protocol: TCP
   selector:
     app: java-app  # This label should match your Java app's deployment

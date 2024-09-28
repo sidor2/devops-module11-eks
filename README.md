@@ -52,7 +52,7 @@ kubectl apply -f phpmyadmin/phpmyadmin.yaml
 
 ### STEP 4: Deploy your Java Application with 2 replicas
 
-- You deploy your Java application using Fargate with 3 replicas using the same setup as before.
+- (Option 1) You deploy your Java application using Fargate with 3 replicas using the same setup as before.
 
 ```
 kubectl apply -f java-app/secret.yaml
@@ -61,34 +61,41 @@ kubectl apply -f java-app/deployment.yaml
 kubectl apply -f java-app/service.yaml
 ```
 
+- (Option 2) Deploy using the Helm chart
+
+```
+helm install java-app java-app-helm  -f java-app-helm/values.yaml
+```
+
 ### STEP 5: Configure Autoscaling
 
-- attach ClusterAutoScaler policy to the IAM role that your worker nodes use
+1. Attach ClusterAutoScaler policy to the IAM role that your worker nodes use
 
+2. 
 ```
 aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[*].{Name:AutoScalingGroupName}' --output table
 ```
-
+3. 
 ```
 aws autoscaling create-or-update-tags --tags \
-  Key=k8s.io/cluster-autoscaler/enabled,Value=true,PropagateAtLaunch=true,ResourceType=auto-scaling-group,ResourceId=eks-m11-nodegroup-b2c90af1-aad7-b258-5c5b-9f11570eeb38 \
-  Key=k8s.io/cluster-autoscaler/m11-cluster,Value=true,PropagateAtLaunch=true,ResourceType=auto-scaling-group,ResourceId=eks-m11-nodegroup-b2c90af1-aad7-b258-5c5b-9f11570eeb38
+  Key=k8s.io/cluster-autoscaler/enabled,Value=true,PropagateAtLaunch=true,ResourceType=auto-scaling-group,ResourceId=eks-m11-nodegroup-e8c91d44-aff1-0e2b-f1a1-0003044c98bb \
+  Key=k8s.io/cluster-autoscaler/m11-cluster,Value=true,PropagateAtLaunch=true,ResourceType=auto-scaling-group,ResourceId=eks-m11-nodegroup-e8c91d44-aff1-0e2b-f1a1-0003044c98bb
 ```
-
+4. 
 ```
 wget https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
 ```
-
+5. 
 ```
 kubectl apply -f cluster-autoscaler-autodiscover.yaml
 ```
-
+6. 
 ```
 kubectl annotate deployment cluster-autoscaler \
     -n kube-system \
     cluster-autoscaler.kubernetes.io/safe-to-evict="false"
 ```
-- edit the deployment container commands
+7. edit the deployment container commands
 ```
         - --balance-similar-node-groups
         - --skip-nodes-with-system-pods=false
